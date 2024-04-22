@@ -13,6 +13,60 @@ let buildMode = true;
 let buildKeyDown = false; //the key Z
 let stepKeyDown = false; //the key x
 
+const premadeSet = [
+{ x: 37, y: 31 },
+{ x: 38, y: 31 },
+{ x: 41, y: 31 },
+{ x: 42, y: 31 },
+{ x: 35, y: 36 },
+{ x: 36, y: 36 },
+{ x: 36, y: 37 },
+{ x: 37, y: 37 },
+{ x: 37, y: 38 },
+{ x: 38, y: 38 },
+{ x: 39, y: 38 },
+{ x: 40, y: 38 },
+{ x: 40, y: 37 },
+{ x: 41, y: 37 },
+{ x: 41, y: 38 },
+{ x: 42, y: 38 },
+{ x: 43, y: 37 },
+{ x: 44, y: 36 },
+{ x: 45, y: 36 },
+{ x: 35, y: 28 },
+{ x: 36, y: 29 },
+{ x: 37, y: 28 },
+{ x: 43, y: 29 },
+{ x: 42, y: 28 },
+{ x: 44, y: 28 },
+{ x: 32, y: 34 },
+{ x: 31, y: 33 },
+{ x: 30, y: 34 },
+{ x: 30, y: 35 },
+{ x: 30, y: 36 },
+{ x: 31, y: 37 },
+{ x: 32, y: 36 },
+{ x: 47, y: 34 },
+{ x: 48, y: 33 },
+{ x: 49, y: 34 },
+{ x: 49, y: 35 },
+{ x: 49, y: 36 },
+{ x: 47, y: 37 },
+{ x: 48, y: 37 },
+{ x: 48, y: 38 },
+{ x: 38, y: 34 },
+{ x: 40, y: 34 },
+{ x: 32, y: 44 },
+{ x: 33, y: 44 },
+{ x: 45, y: 44 },
+{ x: 46, y: 44 },
+{ x: 34, y: 43 },
+{ x: 35, y: 42 },
+{ x: 36, y: 42 },
+{ x: 37, y: 42 },
+{ x: 38, y: 42 }
+];
+
 (async ()=>{
     await setup();
     await load();
@@ -56,6 +110,8 @@ async function play()
         neighborCheckGrid.push(neighborCheckRow);
     }
 
+    
+
     const entityBoard = new Container();
     app.stage.addChild(entityBoard);
     const tileGraphics = new Graphics();
@@ -77,6 +133,12 @@ async function play()
     clickDetector.alpha = 0.01;
     clickDetector.on('pointerdown', detector_clicked);
     app.stage.addChild(clickDetector);
+
+    //load the presetlivetiles
+    premadeSet.forEach((live)=>{
+        directEditEntityGrid(live.x, live.y);
+    });
+    drawEntityGrid();
 
     let lastMousePosition = {x:0,y:0}
     clickDetector.on('mousemove', (event)=>{
@@ -303,7 +365,6 @@ async function play()
 
         directEditEntityGrid(positions.adjustedX, positions.adjustedY);
         drawEntityGrid();
-
     }
 
 }
