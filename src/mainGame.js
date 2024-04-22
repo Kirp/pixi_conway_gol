@@ -8,7 +8,10 @@ const entityGrid = [];
 const neighborCheckGrid = [];
 const entityGridWidth = appWidth/tileDimensions;
 const entityGridHeight = appheight/tileDimensions;
-const liveEntityList =[];
+let gridUpdating = false;
+let buildMode = true;
+let buildKeyDown = false; //the key Z
+let stepKeyDown = false; //the key x
 
 (async ()=>{
     await setup();
@@ -29,11 +32,9 @@ async function setup()
 async function load()
 {
     const assets = [
-        {alias: "window_left_red", src: new URL("./assets/tile_0082.png", import.meta.url).href},
-        {alias: "window_center_red", src: new URL("./assets/tile_0083.png", import.meta.url).href},
-        {alias: "window_right_red", src: new URL("./assets/tile_0084.png", import.meta.url).href},
+        {alias: "instructions", src: new URL("./assets/instructions.png", import.meta.url).href},
         {alias: "detector_bg", src: new URL("./assets/conTile.png", import.meta.url).href},
-
+        {alias: "targeter", src: new URL("./assets/targetingTile.png", import.meta.url).href},
     ];
 
     await Assets.load(assets);
@@ -60,30 +61,214 @@ async function play()
     const tileGraphics = new Graphics();
     entityBoard.addChild(tileGraphics);
 
+    const targeter = Sprite.from('targeter');
+    app.stage.addChild(targeter);
+
+    const instructions = Sprite.from('instructions');
+    app.stage.addChild(instructions);
+
+
     const clickDetector = Sprite.from('detector_bg');
     clickDetector.width = appWidth;
     clickDetector.height = appheight;
     clickDetector.interactive = true;
     clickDetector.eventMode = 'static';
-    clickDetector.cursor = 'crosshair';
+    // clickDetector.cursor = 'crosshair';
     clickDetector.alpha = 0.01;
     clickDetector.on('pointerdown', detector_clicked);
     app.stage.addChild(clickDetector);
 
-    console.log(entityGrid);
+    let lastMousePosition = {x:0,y:0}
+    clickDetector.on('mousemove', (event)=>{
+    
+       lastMousePosition.x = event.global.x;
+       lastMousePosition.y = event.global.y;
+       if(lastMousePosition.x>appWidth/2)
+       {
+        instructions.x = 0;
+       }else
+       {
+        instructions.x = appWidth-instructions.width;
+       }
+       if(targeter)
+       {
+        targeter.x = Math.floor(lastMousePosition.x/tileDimensions)*tileDimensions;
+        targeter.y = Math.floor(lastMousePosition.y/tileDimensions)*tileDimensions;
+       } 
+    });
+
+    app.ticker.add((time)=>{gameLoop(time);})
+
+    let currentLogTime = 0;
+    let loopActivateTime = 10;
+    function gameLoop(time)
+    {
+        if(buildMode)
+        {
+            if(!targeter.visible) targeter.visible = true;
+            if(!instructions.visible) instructions.visible = true;
+            return;
+        }
+        if(targeter.visible) targeter.visible = false;
+        if(instructions.visible) instructions.visible = false;
+        currentLogTime+=time.deltaTime;
+        if(currentLogTime>loopActivateTime)
+        {
+            worldStep();
+            currentLogTime = 0;
+        }
+    }
+
+    window.addEventListener("keydown",onKeyDown,false);
+    window.addEventListener("keyup",onKeyUp,false);
+
+    function onKeyDown(event)
+    {
+        if((event.key=="z" || event.key=="Z")&&!buildKeyDown)
+        {
+            //activate build mode
+            buildKeyDown = true;
+
+            buildMode = !buildMode;
+        }
+        
+        if((event.key=="x" || event.key=="X")&&!stepKeyDown)
+        {
+            stepKeyDown = true;
+           //call a step mode 
+           worldStep();
+
+        }
+    }
+
+    function onKeyUp(event)
+    {
+        if((event.key=="z" || event.key=="Z")&&buildKeyDown)
+        {
+            //activate build mode
+            buildKeyDown = false;
+        }
+        
+        if((event.key=="x" || event.key=="X")&&stepKeyDown)
+        {
+            stepKeyDown = false;
+        }
+    }
+
+    function worldStep()
+    {
+        //calculate entity changes and change due to the conway ruleset
+        gridUpdating = true;
+        //first lets fill up the neighbor list
+        updateNeighborList();
+
+        //then lets update the entityGrid
+        updateEntityGridAndClean();
+
+        drawEntityGrid()
+
+        gridUpdating = false;
+
+        
+    }
+
+    function updateNeighborList()
+    {
+        //now lets go down the list
+        for(let yctr = 0; yctr < entityGridHeight; yctr++)
+        {
+            for(let xctr = 0; xctr < entityGridWidth; xctr++)
+            {
+                if(neighborCheckGrid[yctr][xctr]>9)
+                {
+                    markNeighborTiles(xctr, yctr);
+                }
+            }        
+        }
+    }
+
+    function updateEntityGridAndClean()
+    {
+        for(let yctr = 0; yctr < entityGridHeight; yctr++)
+        {
+            for(let xctr = 0; xctr < entityGridWidth; xctr++)
+            {
+                //turn off the light
+                // entityGrid[yctr][xctr] = false;
+                switch(neighborCheckGrid[yctr][xctr])
+                {
+                    case 3:
+                    case 12:
+                    case 13:
+                        //lives
+                        entityGrid[yctr][xctr] = true;
+                        neighborCheckGrid[yctr][xctr] = 10;
+                        break
+                    default:
+                        //dies
+                        entityGrid[yctr][xctr] = false;
+                        neighborCheckGrid[yctr][xctr] = 0;
+                        break;
+                }
+                
+            }        
+        }
+    }
+
+    function markNeighborTiles(x,y)
+    {
+        let top_center = {x:x, y:y-1};
+        let top_left = {x:x-1, y:y-1};
+        let top_right = {x:x+1, y:y-1};
+
+        let mid_left = {x:x-1, y:y};
+        let mid_right = {x:x+1, y:y};
+
+        let bot_center = {x:x, y:y+1};
+        let bot_left = {x:x-1, y:y+1};
+        let bot_right = {x:x+1, y:y+1};
+
+        let checkCoords = [
+            top_center,
+            top_left,
+            top_right,
+            mid_left,
+            mid_right,
+            bot_center,
+            bot_left,
+            bot_right
+        ];
+
+        checkCoords.forEach((coords)=>{
+            if(
+            coords.x < 0 ||
+            coords.x >= entityGridWidth ||
+            coords.y < 0 ||
+            coords.y >= entityGridHeight)
+            {
+                //out of bounds
+                //toss an error?
+                //console.log("out of bounds");
+            }else{
+                //add a point to the neighborgrid
+                neighborCheckGrid[coords.y][coords.x] += 1;
+                //console.log(neighborCheckGrid[coords.y][coords.x]);
+            }
+        })
+    }
 
     function drawEntityGrid()
     {
         //first lets clear em
         tileGraphics.rect(0,0,appWidth, appheight);
-        tileGraphics.fill(0x000000);
+        tileGraphics.fill(0x303030);
 
         //now lets go down the list
         for(let yctr = 0; yctr < entityGridHeight; yctr++)
         {
             for(let xctr = 0; xctr < entityGridWidth; xctr++)
             {
-                if(entityGrid[yctr][xctr])
+                if(entityGrid[yctr][xctr]==true)
                 {
                     tileGraphics.rect(xctr*tileDimensions,yctr*tileDimensions,tileDimensions, tileDimensions);
                     tileGraphics.fill(0x999900);
@@ -94,14 +279,17 @@ async function play()
 
     function directEditEntityGrid(gx, gy)
     {
-        let lifeStatus = entityGrid[gy][gx];
-        entityGrid[gy][gx] = !lifeStatus;
+        if(!buildMode) return;
+        entityGrid[gy][gx] = !entityGrid[gy][gx];
 
-        if(!lifeStatus)
+        if(entityGrid[gy][gx] == true)
         {
+            neighborCheckGrid[gy][gx] = 10;
             
-        }
-
+        }else if(entityGrid[gy][gx] == false)
+        {
+            neighborCheckGrid[gy][gx] = 0;    
+        } 
     }
 
     function detector_clicked(event)
@@ -113,11 +301,7 @@ async function play()
             adjustedY: Math.floor(event.global.y/tileDimensions),
         }
 
-
-        console.log(positions.adjustedX);
-        console.log(positions.adjustedY);
-
-        directEditEntityGrid(positions.adjustedX, position.adjustedY);
+        directEditEntityGrid(positions.adjustedX, positions.adjustedY);
         drawEntityGrid();
 
     }
