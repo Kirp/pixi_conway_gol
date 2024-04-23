@@ -25,4 +25,4 @@ npm run build
 
 
 ***
-***Optional Project task coded by [@kirp](https://github.com/Kirp)***W
+***Optional Project #4 task coded by [@kirp](https://github.com/Kirp)***
